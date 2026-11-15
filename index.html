@@ -10,7 +10,7 @@
     <div class="max-w-4xl mx-auto space-y-6">
         <header class="text-center">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 도장판 최적 배분 & 최적화 탐색기</h1>
-            <p class="text-slate-500 mt-1 text-sm">도장판 칸 수(4~8칸)와 목표 혜택 기준(3~8개)을 설정하여 순환 시뮬레이션을 실행하세요.</p>
+            <p class="text-slate-500 mt-1 text-sm">도장판 칸 수와 혜택 기준, 적립 배수를 설정하여 순환 시뮬레이션을 실행하세요.</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -59,9 +59,13 @@
                             <label class="block text-xs font-medium text-slate-500 mb-1">관람일자</label>
                             <input type="date" id="input-date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" required />
                         </div>
-                        <div class="flex items-center gap-2 pt-1">
-                            <input type="checkbox" id="input-double" class="w-4 h-4 text-indigo-600 rounded border-slate-300" />
-                            <label for="input-double" class="text-xs text-slate-700 cursor-pointer">더블 적립 회차 (도장 2개)</label>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">적립 배수</label>
+                            <select id="input-earn-type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                                <option value="1">일반 적립 (도장 1개)</option>
+                                <option value="2">더블 적립 (도장 2개)</option>
+                                <option value="3">트리플 적립 (도장 3개)</option>
+                            </select>
                         </div>
                         <button type="submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg text-sm transition">
                             기록 누적 저장
@@ -76,7 +80,7 @@
                 <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl space-y-2">
                     <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider">💡 최적화 탐색 결과</h3>
                     <p id="advice-text" class="text-sm text-indigo-950 font-medium leading-relaxed pt-1">
-                        왼쪽에서 판 칸 수와 기준을 설정한 뒤 **[최적화 탐색 실행하기]** 버튼을 눌러주세요.
+                        왼쪽에서 관극 기록을 추가한 뒤 **[최적화 탐색 실행하기]** 버튼을 눌러주세요.
                     </p>
                 </div>
 
@@ -97,6 +101,9 @@
         </div>
     </div>
 
+    <script>
+        // 초기 기록을 빈 배열([])로 설정하여 처음 접속 시 아무것도 안 뜨게 비워둠
+        let records = JSON.parse(localStorage.getItem('clean_opt_records')) || [];
         let optimizedResult = null;
 
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
@@ -104,17 +111,17 @@
         function addRecord(e) {
             e.preventDefault();
             const date = document.getElementById('input-date').value;
-            const isDouble = document.getElementById('input-double').checked;
+            const earnType = parseInt(document.getElementById('input-earn-type').value);
 
-            const newRecord = { id: Date.now(), date, isDouble };
+            const newRecord = { id: Date.now(), date, earnType };
             records.unshift(newRecord);
-            localStorage.setItem('simple_opt_records', JSON.stringify(records));
+            localStorage.setItem('clean_opt_records', JSON.stringify(records));
             render();
         }
 
         function deleteRecord(id) {
             records = records.filter(r => r.id !== id);
-            localStorage.setItem('simple_opt_records', JSON.stringify(records));
+            localStorage.setItem('clean_opt_records', JSON.stringify(records));
             optimizedResult = null;
             render();
         }
@@ -126,7 +133,7 @@
 
             let totalStampsEarned = 0;
             records.forEach(r => {
-                totalStampsEarned += (r.isDouble ? 2 : 1);
+                totalStampsEarned += r.earnType;
             });
 
             let boards = {};
@@ -163,13 +170,17 @@
                 timelineHtml = '<p class="text-sm text-slate-400 text-center py-4">누적된 관극 기록이 없습니다.</p>';
             } else {
                 records.forEach((item, index) => {
+                    let badge = '';
+                    if (item.earnType === 2) badge = '<span class="ml-2 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블적립(+2)</span>';
+                    if (item.earnType === 3) badge = '<span class="ml-2 bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">트리플적립(+3)</span>';
+
                     timelineHtml += `
                         <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
                             <div class="flex items-center gap-3">
                                 <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">${index + 1}</span>
                                 <div>
                                     <span class="font-bold text-slate-800">${item.date} 관람</span>
-                                    ${item.isDouble ? '<span class="ml-2 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블적립(+2)</span>' : ''}
+                                    ${badge}
                                 </div>
                             </div>
                             <button onclick="deleteRecord(${item.id})" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
@@ -198,7 +209,6 @@
                 const b = boards[i];
                 let gridHtml = '';
                 
-                // 설정한 boardCapacity(4~8칸)만큼 칸을 그리되, targetCriteria 까지만 채움
                 for (let slot = 1; slot <= boardCapacity; slot++) {
                     const isFilled = slot <= b.stampsCount;
                     const isBeyondCriteria = slot > targetCriteria;
