@@ -10,18 +10,18 @@
     <div class="max-w-4xl mx-auto space-y-6">
         <header class="text-center">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🎭 다중 도장판 순환 최적화 탐색기</h1>
-            <p class="text-slate-500 mt-1 text-sm">8개 만원 도장판이 여러 개일 때, 판을 넘나들며 혜택 도달 시점을 자동으로 시뮬레이션합니다.</p>
+            <p class="text-slate-500 mt-1 text-sm">선택한 우선 혜택 개수(4개/6개/8개)를 채우면 곧바로 다음 판으로 순환하는 스마트 시뮬레이션입니다.</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- [왼쪽] 입력 및 설정 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 md:col-span-1 space-y-5">
                 <div>
-                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 우선 탐색할 혜택 (판 기준)</h2>
+                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 우선 혜택 기준 (판 완성 단위)</h2>
                     <div class="grid grid-cols-3 gap-2" id="priority-buttons">
-                        <button type="button" onclick="setPriority(4)" id="btn-4" class="py-2 text-sm font-semibold rounded-xl border bg-indigo-600 text-white border-indigo-600 shadow-sm">4개 혜택</button>
-                        <button type="button" onclick="setPriority(6)" id="btn-6" class="py-2 text-sm font-semibold rounded-xl border bg-slate-50 text-slate-600 border-slate-200">6개 혜택</button>
-                        <button type="button" onclick="setPriority(8)" id="btn-8" class="py-2 text-sm font-semibold rounded-xl border bg-slate-50 text-slate-600 border-slate-200">8개 혜택</button>
+                        <button type="button" onclick="setPriority(4)" id="btn-4" class="py-2 text-sm font-semibold rounded-xl border bg-indigo-600 text-white border-indigo-600 shadow-sm">4개 우선</button>
+                        <button type="button" onclick="setPriority(6)" id="btn-6" class="py-2 text-sm font-semibold rounded-xl border bg-slate-50 text-slate-600 border-slate-200">6개 우선</button>
+                        <button type="button" onclick="setPriority(8)" id="btn-8" class="py-2 text-sm font-semibold rounded-xl border bg-slate-50 text-slate-600 border-slate-200">8개 우선</button>
                     </div>
                 </div>
 
@@ -43,7 +43,7 @@
                             <label for="input-double" class="text-xs text-slate-700 cursor-pointer">더블 적립 회차 (도장 2개)</label>
                         </div>
                         <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition">
-                            기록 추가 및 판별 자동 계산
+                            기록 추가 및 순환 최적화 계산
                         </button>
                     </form>
                 </div>
@@ -54,7 +54,7 @@
                 <!-- 최적화 안내 가이드 -->
                 <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl space-y-2">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider">💡 다중 도장판 스마트 탐색 결과</h3>
+                        <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider">💡 스마트 순환 최적화 결과</h3>
                         <select id="show-select" onchange="changeShow(this.value)" class="p-1 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-indigo-800">
                         </select>
                     </div>
@@ -72,7 +72,7 @@
 
                 <!-- 도장판별 혜택 달성 이력 요약 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
-                    <h3 class="text-md font-semibold text-slate-700">📋 도장판별 혜택 달성 기록</h3>
+                    <h3 class="text-md font-semibold text-slate-700">📋 도장판별 순환 및 달성 기록</h3>
                     <div id="boards-history" class="space-y-2"></div>
                 </div>
 
@@ -86,21 +86,14 @@
     </div>
 
     <script>
-        // 초기 데이터 로드 또는 기본값 설정
         let records = JSON.parse(localStorage.getItem('multi_board_records')) || [
             { id: 1, date: '2026-03-01', title: '이끼숲', isDouble: false },
             { id: 2, date: '2026-03-10', title: '이끼숲', isDouble: true },
             { id: 3, date: '2026-03-15', title: '이끼숲', isDouble: false },
-            { id: 4, date: '2026-03-20', title: '이끼숲', isDouble: false },
-            { id: 5, date: '2026-04-01', title: '이끼숲', isDouble: false },
-            { id: 6, date: '2026-04-05', title: '이끼숲', isDouble: false },
-            { id: 7, date: '2026-04-10', title: '이끼숲', isDouble: false },
-            { id: 8, date: '2026-04-15', title: '이끼숲', isDouble: false },
-            { id: 9, date: '2026-04-20', title: '이끼숲', isDouble: false },
-            { id: 10, date: '2026-05-01', title: '이끼숲', isDouble: false }
+            { id: 4, date: '2026-03-20', title: '이끼숲', isDouble: false }
         ];
 
-        let selectedPriority = 4;
+        let selectedPriority = 4; // 기본 4개 우선
         let activeShow = '이끼숲';
 
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
@@ -111,8 +104,10 @@
                 const btn = document.getElementById(`btn-${m}`);
                 if (m === val) {
                     btn.className = "py-2 text-sm font-semibold rounded-xl border bg-indigo-600 text-white border-indigo-600 shadow-sm";
+                    btn.innerText = `${m}개 우선`;
                 } else {
                     btn.className = "py-2 text-sm font-semibold rounded-xl border bg-slate-50 text-slate-600 border-slate-200";
+                    btn.innerText = `${m}개 우선`;
                 }
             });
             render();
@@ -148,7 +143,6 @@
         }
 
         function render() {
-            // 작품 목록 셀렉트박스 업데이트
             const shows = [...new Set(records.map(r => r.title))];
             const selectEl = document.getElementById('show-select');
             
@@ -163,25 +157,36 @@
                 .filter(r => r.title === activeShow)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            const BOARD_CAPACITY = 8;
+            // 핵심 변경: 선택한 우선 개수(selectedPriority)가 판의 정원(CAPACITY)이 됨
+            const BOARD_CAPACITY = selectedPriority;
             let totalCumulativeStamps = 0;
             let boardTimeline = [];
             let boards = {};
 
+            let currentBoardNum = 1;
+            let stampsInCurrentBoard = 0;
+
+            if (!boards[currentBoardNum]) {
+                boards[currentBoardNum] = { boardNum: currentBoardNum, stampsCount: 0, completedDate: null };
+            }
+
             showRecords.forEach((record, index) => {
                 const earned = record.isDouble ? 2 : 1;
+                
                 for (let i = 0; i < earned; i++) {
                     totalCumulativeStamps += 1;
-                    const currentBoardNum = Math.ceil(totalCumulativeStamps / BOARD_CAPACITY);
-                    const positionInBoard = ((totalCumulativeStamps - 1) % BOARD_CAPACITY) + 1;
+                    stampsInCurrentBoard += 1;
 
-                    if (!boards[currentBoardNum]) {
-                        boards[currentBoardNum] = { boardNum: currentBoardNum, stampsCount: 0, milestones: { 4: null, 6: null, 8: null } };
-                    }
-                    boards[currentBoardNum].stampsCount += 1;
-
-                    if ([4, 6, 8].includes(positionInBoard) && !boards[currentBoardNum].milestones[positionInBoard]) {
-                        boards[currentBoardNum].milestones[positionInBoard] = { date: record.date };
+                    // 현재 판이 선택된 우선 개수(예: 4개)에 도달하면 완성 후 다음 판으로 즉시 넘어감
+                    if (stampsInCurrentBoard === BOARD_CAPACITY) {
+                        boards[currentBoardNum].stampsCount = stampsInCurrentBoard;
+                        boards[currentBoardNum].completedDate = record.date;
+                        
+                        currentBoardNum += 1;
+                        stampsInCurrentBoard = 0;
+                        boards[currentBoardNum] = { boardNum: currentBoardNum, stampsCount: 0, completedDate: null };
+                    } else {
+                        boards[currentBoardNum].stampsCount = stampsInCurrentBoard;
                     }
                 }
 
@@ -190,76 +195,63 @@
                     index: index + 1,
                     date: record.date,
                     isDouble: record.isDouble,
-                    currentBoard: Math.ceil(totalCumulativeStamps / BOARD_CAPACITY) || 1,
-                    positionInCurrentBoard: totalCumulativeStamps === 0 ? 0 : ((totalCumulativeStamps - 1) % BOARD_CAPACITY) + 1
+                    currentBoard: stampsInCurrentBoard === 0 && totalCumulativeStamps > 0 ? currentBoardNum - 1 : currentBoardNum,
+                    positionInCurrentBoard: stampsInCurrentBoard === 0 && totalCumulativeStamps > 0 ? BOARD_CAPACITY : stampsInCurrentBoard
                 });
             });
 
-            const currentActiveBoardNum = totalCumulativeStamps === 0 ? 1 : Math.ceil(totalCumulativeStamps / BOARD_CAPACITY);
-            const currentBoardPosition = totalCumulativeStamps === 0 ? 0 : ((totalCumulativeStamps - 1) % BOARD_CAPACITY) + 1;
-            const activeBoardData = boards[currentActiveBoardNum] || { boardNum: currentActiveBoardNum, stampsCount: 0, milestones: { 4: null, 6: null, 8: null } };
+            // 현재 진행 중인 판 정보 정돈
+            const activeBoardNum = stampsInCurrentBoard === 0 && totalCumulativeStamps > 0 ? currentBoardNum - 1 : currentBoardNum;
+            const activeBoardPos = stampsInCurrentBoard === 0 && totalCumulativeStamps > 0 ? BOARD_CAPACITY : stampsInCurrentBoard;
+            const isBoardFull = activeBoardPos === BOARD_CAPACITY;
 
-            // 조언 텍스트 생성
-            const targetMilestoneInfo = activeBoardData.milestones[selectedPriority];
             let advice = "";
             if (showRecords.length === 0) {
                 advice = "등록된 관극 기록이 없습니다. 왼쪽에서 기록을 추가해 주세요.";
-            } else if (targetMilestoneInfo) {
-                advice = `✨ 현재 [제${currentActiveBoardNum}판]에서 **${selectedPriority}개 혜택**은 이미 ${targetMilestoneInfo.date} 관람 때 달성 완료되었습니다!`;
             } else {
-                const neededStamps = selectedPriority - currentBoardPosition;
-                if (neededStamps > 0) {
-                    advice = `🎯 현재 [제${currentActiveBoardNum}판] 진행 중 (현재 ${currentBoardPosition}/8개). 선택하신 **${selectedPriority}개 혜택**까지 **도장 ${neededStamps}개가 더 필요**합니다.`;
-                } else {
-                    advice = `🚀 현재 [제${currentActiveBoardNum}판]에서 이미 ${selectedPriority}개 단계를 넘어 다음 단계로 향하고 있습니다!`;
-                }
+                advice = `🎯 현재 [제${activeBoardNum}판] 진행 중 (${activeBoardPos}/${BOARD_CAPACITY}개 채워짐). **${selectedPriority}개 우선 혜택** 기준까지 앞으로 **도장 ${BOARD_CAPACITY - activeBoardPos}개** 남았습니다! (달성 시 즉시 다음 판으로 순환합니다)`;
             }
             document.getElementById('advice-text').innerHTML = advice;
             document.getElementById('total-stamps-badge').innerText = `총 누적 도장: ${totalCumulativeStamps}개`;
-            document.getElementById('current-board-title').innerText = `🎟️ 현재 진행 중인 도장판 (제 ${currentActiveBoardNum}판)`;
+            document.getElementById('current-board-title').innerText = `🎟️ 현재 진행 중인 도장판 (${selectedPriority}개 기준 제 ${activeBoardNum}판)`;
 
-            // 도장판 그리드 렌더링 (8칸)
+            // 도장판 그리드 렌더링 (선택한 우선 개수만큼 칸 표시)
             let gridHtml = '';
-            for (let i = 1; i <= 8; i++) {
-                const isStamped = i <= currentBoardPosition;
-                const isMilestone = [4, 6, 8].includes(i);
+            for (let i = 1; i <= BOARD_CAPACITY; i++) {
+                const isStamped = i <= activeBoardPos;
                 gridHtml += `
                     <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all relative ${isStamped ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-300 border border-dashed border-slate-200'}">
                         <span>${i}</span>
-                        ${isMilestone ? `<span class="text-[9px] mt-0.5 px-1 rounded ${isStamped ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500'}">${i}개특전</span>` : ''}
+                        ${i === BOARD_CAPACITY ? `<span class="text-[9px] mt-0.5 px-1 rounded ${isStamped ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500'}">혜택달성!</span>` : ''}
                     </div>
                 `;
             }
             document.getElementById('board-grid').innerHTML = gridHtml;
 
             // 도장판별 이력 렌더링
-            const boardKeys = Object.keys(boards);
+            const boardKeys = Object.keys(boards).filter(k => boards[k].stampsCount > 0 || k == 1);
             let historyHtml = '';
-            if (boardKeys.length === 0) {
-                historyHtml = '<p class="text-sm text-slate-400 text-center py-2">달성 기록 없음</p>';
-            } else {
-                boardKeys.forEach(k => {
-                    const b = boards[k];
+            boardKeys.forEach(k => {
+                const b = boards[k];
+                if (b.boardNum <= activeBoardNum || (b.boardNum === activeBoardNum && b.stampsCount > 0)) {
+                    const isCompleted = b.completedDate !== null;
                     historyHtml += `
-                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div class="font-bold text-slate-800">제 ${b.boardNum}판 <span class="text-xs text-slate-400 font-normal ml-1">(채워진 도장: ${b.stampsCount}/8개)</span></div>
-                            <div class="flex gap-2 text-xs">
-                                <span class="px-2 py-1 rounded-lg font-medium ${b.milestones[4] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-400'}">4개: ${b.milestones[4] ? b.milestones[4].date : '미달성'}</span>
-                                <span class="px-2 py-1 rounded-lg font-medium ${b.milestones[6] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-400'}">6개: ${b.milestones[6] ? b.milestones[6].date : '미달성'}</span>
-                                <span class="px-2 py-1 rounded-lg font-medium ${b.milestones[8] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-400'}">8개: ${b.milestones[8] ? b.milestones[8].date : '미달성'}</span>
-                            </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm flex justify-between items-center">
+                            <div class="font-bold text-slate-800">제 ${b.boardNum}판 <span class="text-xs text-slate-400 font-normal ml-1">(${b.stampsCount}/${BOARD_CAPACITY}개)</span></div>
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+                                ${isCompleted ? `달성 완료 (${b.completedDate})` : '진행 중...'}
+                            </span>
                         </div>
                     `;
-                });
-            }
-            document.getElementById('boards-history').innerHTML = historyHtml;
+                }
+            });
+            document.getElementById('boards-history').innerHTML = historyHtml || '<p class="text-sm text-slate-400 text-center py-2">기록 없음</p>';
 
             // 전체 타임라인 렌더링
             let timelineHtml = '';
             if (boardTimeline.length === 0) {
                 timelineHtml = '<p class="text-sm text-slate-400 text-center py-4">관극 기록이 없습니다.</p>';
             } else {
-                // 최신순으로 보여주기 위해 역순 정렬
                 [...boardTimeline].reverse().forEach(item => {
                     timelineHtml += `
                         <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
@@ -271,7 +263,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
-                                <span class="text-xs font-medium text-slate-500">[제 ${item.currentBoard}판 - ${item.positionInCurrentBoard}번째]</span>
+                                <span class="text-xs font-medium text-slate-500">[제 ${item.currentBoard}판 - ${item.positionInCurrentBoard}번째 도장]</span>
                                 <button onclick="deleteRecord(${item.id})" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
                             </div>
                         </div>
@@ -281,7 +273,6 @@
             document.getElementById('timeline-list').innerHTML = timelineHtml;
         }
 
-        // 최초 실행
         render();
     </script>
 </body>
