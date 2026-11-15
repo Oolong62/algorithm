@@ -10,21 +10,31 @@
     <div class="max-w-4xl mx-auto space-y-6">
         <header class="text-center">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 도장판 최적 배분 & 최적화 탐색기</h1>
-            <p class="text-slate-500 mt-1 text-sm">설정한 기준 개수(4개/6개)에 도달하면 즉시 다음 판으로 순환하는 시뮬레이션입니다.</p>
+            <p class="text-slate-500 mt-1 text-sm">도장판의 총 칸 수와 판 넘김 기준 도장 수를 각각 설정하여 최적의 순환 시뮬레이션을 실행하세요.</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- [왼쪽] 설정 및 기록 입력 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 md:col-span-1 space-y-5">
                 <div>
-                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 도장판 최적화 설정</h2>
+                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 도장판 맞춤 설정</h2>
                     <div class="space-y-3 text-sm">
                         <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">판 완성 기준 도장 수 (목표 개수)</label>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">도장판 1판의 총 칸 수</label>
+                            <select id="board-capacity" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                <option value="8" selected>8칸 도장판</option>
+                                <option value="10">10칸 도장판</option>
+                                <option value="12">12칸 도장판</option>
+                                <option value="16">16칸 도장판</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">판 넘김 기준 도장 수 (목표 개수)</label>
                             <select id="target-criteria" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                                <option value="4">4개 채우면 판 넘김</option>
-                                <option value="6">6개 채우면 판 넘김</option>
-                                <option value="8">8개 채우면 판 넘김</option>
+                                <option value="4">4개 채우면 다음 판으로 넘김</option>
+                                <option value="6">6개 채우면 다음 판으로 넘김</option>
+                                <option value="8" selected>8개 채우면 다음 판으로 넘김</option>
+                                <option value="10">10개 채우면 다음 판으로 넘김</option>
                             </select>
                         </div>
                         <div>
@@ -71,7 +81,7 @@
                         </select>
                     </div>
                     <p id="advice-text" class="text-sm text-indigo-950 font-medium leading-relaxed pt-1">
-                        왼쪽에서 기록을 추가한 뒤 **[최적화 탐색 실행하기]** 버튼을 눌러주세요.
+                        왼쪽에서 판 칸 수와 기준을 설정한 뒤 **[최적화 탐색 실행하기]** 버튼을 눌러주세요.
                     </p>
                 </div>
 
@@ -93,7 +103,7 @@
     </div>
 
     <script>
-        let records = JSON.parse(localStorage.getItem('manual_opt_records_v4')) || [
+        let records = JSON.parse(localStorage.getItem('manual_opt_records_v5')) || [
             { id: 1, date: '2026-03-01', title: '이끼숲', isDouble: false },
             { id: 2, date: '2026-03-10', title: '이끼숲', isDouble: true },
             { id: 3, date: '2026-03-15', title: '이끼숲', isDouble: false },
@@ -114,19 +124,19 @@
 
             const newRecord = { id: Date.now(), date, title, isDouble };
             records.unshift(newRecord);
-            localStorage.setItem('manual_opt_records_v4', JSON.stringify(records));
+            localStorage.setItem('manual_opt_records_v5', JSON.stringify(records));
             render();
         }
 
         function deleteRecord(id) {
             records = records.filter(r => r.id !== id);
-            localStorage.setItem('manual_opt_records_v4', JSON.stringify(records));
+            localStorage.setItem('manual_opt_records_v5', JSON.stringify(records));
             optimizedResult = null;
             render();
         }
 
         function runOptimization() {
-            // 셀렉트박스에서 선택된 값을 확실하게 읽어옵니다.
+            const boardCapacity = parseInt(document.getElementById('board-capacity').value);
             const targetCriteria = parseInt(document.getElementById('target-criteria').value);
             const totalBoards = parseInt(document.getElementById('board-count').value);
             const activeShow = document.getElementById('show-select').value;
@@ -148,7 +158,7 @@
             let currentBoardIdx = 1;
             let stampsAllocated = 0;
 
-            // 핵심 로직: 도장을 하나씩 채우다가 설정된 targetCriteria에 도달하면 즉시 다음 판으로 넘어감
+            // 설정된 targetCriteria 도달 시 다음 판으로 순환, 최대 판 크기는 boardCapacity
             while (stampsAllocated < totalStampsEarned && currentBoardIdx <= totalBoards) {
                 boards[currentBoardIdx].stampsCount += 1;
                 stampsAllocated += 1;
@@ -165,7 +175,7 @@
                 boards[currentBoardIdx].completed = true;
             }
 
-            optimizedResult = { targetCriteria, totalBoards, boards, totalStampsEarned };
+            optimizedResult = { boardCapacity, targetCriteria, totalBoards, boards, totalStampsEarned };
             renderResults();
         }
 
@@ -210,11 +220,11 @@
 
         function renderResults() {
             if (!optimizedResult) return;
-            const { targetCriteria, totalBoards, boards, totalStampsEarned } = optimizedResult;
+            const { boardCapacity, targetCriteria, totalBoards, boards, totalStampsEarned } = optimizedResult;
             let completedCount = Object.values(boards).filter(b => b.completed).length;
 
             document.getElementById('advice-text').innerHTML = `
-                ✨ 최적화 탐색 완료! 총 누적 도장 **${totalStampsEarned}개**를 [${targetCriteria}개 기준]으로 배분하여 **${completedCount}개의 판이 완성**되었습니다.
+                ✨ 최적화 탐색 완료! 총 누적 도장 **${totalStampsEarned}개**를 [${boardCapacity}칸 판 / ${targetCriteria}개 기준]으로 배분하여 **${completedCount}개의 판이 완성**되었습니다.
             `;
 
             let boardsHtml = '';
@@ -222,8 +232,8 @@
                 const b = boards[i];
                 let gridHtml = '';
                 
-                // 8칸 판을 그리되, 설정한 targetCriteria 까지만 채우고 나머지는 회색 비움 처리
-                for (let slot = 1; slot <= 8; slot++) {
+                // 설정한 boardCapacity(총 칸 수)만큼 그리드를 동적으로 생성
+                for (let slot = 1; slot <= boardCapacity; slot++) {
                     const isFilled = slot <= b.stampsCount;
                     const isBeyondCriteria = slot > targetCriteria;
 
@@ -249,7 +259,7 @@
                 boardsHtml += `
                     <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                         <div class="flex justify-between items-center text-sm">
-                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (목표 기준: ${targetCriteria}개 도달 시 마감)</span>
+                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (${boardCapacity}칸 만원 / 목표 기준: ${targetCriteria}개 도달 시 마감)</span>
                             <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${b.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
                                 ${b.completed ? '기준 달성 완료 ✨' : `진행 중 (${b.stampsCount}/${targetCriteria})`}
                             </span>
