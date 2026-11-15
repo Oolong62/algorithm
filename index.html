@@ -97,14 +97,6 @@
         </div>
     </div>
 
-    <script>
-        let records = JSON.parse(localStorage.getItem('simple_opt_records')) || [
-            { id: 1, date: '2026-03-01', isDouble: false },
-            { id: 2, date: '2026-03-10', isDouble: true },
-            { id: 3, date: '2026-03-15', isDouble: false },
-            { id: 4, date: '2026-03-20', isDouble: false }
-        ];
-
         let optimizedResult = null;
 
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
