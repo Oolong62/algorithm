@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>뮤지컬 관극 기록 & 이끼숲 도장 계산기</title>
+    <title>뮤지컬 관극 루트 최적화 도장 계산기</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- React & Babel CDN (브라우저에서 바로 실행되도록 설정) -->
+    <!-- React & Babel CDN -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -16,41 +16,38 @@
 
     <script type="text/babel">
         function App() {
-            // 초기 관극 데이터 (로컬 스토리지 연동)
+            // 관극 기록 상태 (localStorage 연동)
             const [records, setRecords] = React.useState(() => {
-                const saved = localStorage.getItem('musical_records');
+                const saved = localStorage.getItem('optimized_musical_records');
                 return saved ? JSON.parse(saved) : [
-                    { id: 1, date: '2026-05-10', title: '팬레터', cast: '김재범, 이봄소리, 홍기범', isDouble: false },
-                    { id: 2, date: '2026-05-15', title: '팬레터', cast: '김재범, 이봄소리, 홍기범', isDouble: true },
-                    { id: 3, date: '2026-05-20', title: '스윙데이즈', cast: '앙상블 캐스트', isDouble: false }
+                    { id: 1, date: '2026-05-01', title: '이끼숲', cast: '캐스트A', isDouble: false },
+                    { id: 2, date: '2026-05-05', title: '이끼숲', cast: '캐스트B', isDouble: true },
+                    { id: 3, date: '2026-05-10', title: '여신님이 보고 계셔', cast: '캐스트C', isDouble: false },
+                    { id: 4, date: '2026-05-12', title: '여신님이 보고 계셔', cast: '캐스트A', isDouble: false },
+                    { id: 5, date: '2026-05-15', title: '여신님이 보고 계셔', cast: '캐스트B', isDouble: true },
                 ];
             });
 
             // 입력 폼 상태
             const [form, setForm] = React.useState({
                 date: new Date().toISOString().split('T')[0],
-                title: '팬레터',
+                title: '이끼숲',
                 cast: '',
                 isDouble: false
             });
 
-            // 선택된 작품 (도장판 조회용)
-            const [selectedShow, setSelectedShow] = React.useState('팬레터');
+            // 작품별 도장판 보상 목표 설정 (예: 3개, 5개, 10개 단위 특전)
+            const rewardMilestones = [3, 5, 10];
 
-            // 로컬 스토리지에 기록 저장
+            // 로컬 스토리지 저장
             React.useEffect(() => {
-                localStorage.setItem('musical_records', JSON.stringify(records));
+                localStorage.setItem('optimized_musical_records', JSON.stringify(records));
             }, [records]);
 
-            // 관극 기록 추가 핸들러
             const handleSubmit = (e) => {
                 e.preventDefault();
                 if (!form.title.trim()) return;
-
-                const newRecord = {
-                    id: Date.now(),
-                    ...form
-                };
+                const newRecord = { id: Date.now(), ...form };
                 setRecords([newRecord, ...records]);
                 setForm({
                     date: new Date().toISOString().split('T')[0],
@@ -60,40 +57,63 @@
                 });
             };
 
-            // 기록 삭제 핸들러
             const handleDelete = (id) => {
                 setRecords(records.filter(r => r.id !== id));
             };
 
-            // 작품 목록 추출 (중복 제거)
-            const shows = [...new Set(records.map(r => r.title))];
-            if (!shows.includes(selectedShow) && shows.length > 0) {
-                setSelectedShow(shows[0]);
-            }
+            // ── [최적화 알고리즘 분석 로직] ──
+            // 작품별로 그룹화하여 총 도장 수 계산 및 다음 목표까지의 최적 루트 분석
+            const analysisMap = {};
+            records.forEach(r => {
+                if (!analysisMap[r.title]) {
+                    analysisMap[r.title] = { totalStamps: 0, count: 0, items: [] };
+                }
+                const earned = r.isDouble ? 2 : 1;
+                analysisMap[r.title].totalStamps += earned;
+                analysisMap[r.title].count += 1;
+                analysisMap[r.title].items.push(r);
+            });
 
-            // 특정 작품의 총 도장 수 계산 알고리즘
-            const showRecords = records.filter(r => r.title === selectedShow);
-            const totalStamps = showRecords.reduce((acc, cur) => acc + (cur.isDouble ? 2 : 1), 0);
+            // 최적화 루트 도출
+            const optimizedRoutes = Object.keys(analysisMap).map(title => {
+                const data = analysisMap[title];
+                const currentStamps = data.totalStamps;
 
-            // 도장판 보상 기준 (예시: 3개, 5개, 10개)
-            const rewards = [
-                { count: 3, name: '프로그램북 증정' },
-                { count: 5, name: 'OST 할인권' },
-                { count: 10, name: 'MD 교환권' }
-            ];
+                // 다음 달성해야 할 마일스톤 찾기
+                let nextMilestone = rewardMilestones.find(m => m > currentStamps);
+                let isCompletedAll = false;
+                
+                if (!nextMilestone) {
+                    nextMilestone = rewardMilestones[rewardMilestones.length - 1];
+                    isCompletedAll = true;
+                }
+
+                const stampsNeeded = isCompletedAll ? 0 : nextMilestone - currentStamps;
+                
+                // 효율성 점수 계산 (관람 횟수 대비 도장 획득 효율)
+                const efficiency = (currentStamps / data.count).toFixed(2);
+
+                return {
+                    title,
+                    totalStamps: currentStamps,
+                    totalViews: data.count,
+                    efficiency,
+                    nextMilestone: isCompletedAll ? '모든 특전 달성 완료! 🎉' : `${nextMilestone}개 특전 (앞으로 ${stampsNeeded}개 필요)`,
+                    progressPercent: Math.min(100, Math.round((currentStamps / nextMilestone) * 100))
+                };
+            });
 
             return (
                 <div className="max-w-4xl mx-auto p-4 sm:p-6">
-                    {/* 상단 타이틀 */}
                     <header className="mb-8 text-center">
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">🎭 관극 기록 & 도장 계산기</h1>
-                        <p className="text-slate-500 mt-2">관극 기록을 입력하면 자동으로 도장이 적립되고 도장판이 채워집니다.</p>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 루트 최적화 & 도장 분석기</h1>
+                        <p className="text-slate-500 mt-2">전체 관극 기록을 바탕으로 작품별 적립 효율과 다음 특전 달성 루트를 분석합니다.</p>
                     </header>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* [왼쪽] 관극 기록 입력 폼 */}
+                        {/* 관극 기록 입력 */}
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 md:col-span-1">
-                            <h2 className="text-lg font-semibold mb-4 text-slate-700">✍️ 관극 기록 추가</h2>
+                            <h2 className="text-lg font-semibold mb-4 text-slate-700">➕ 관극 기록 추가</h2>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">관람일자</label>
@@ -101,29 +121,29 @@
                                         type="date" 
                                         value={form.date}
                                         onChange={e => setForm({...form, date: e.target.value})}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                                         required 
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">뮤지컬 작품명</label>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">작품명</label>
                                     <input 
                                         type="text" 
-                                        placeholder="예: 팬레터, 스윙데이즈"
+                                        placeholder="예: 이끼숲, 두 도시 이야기"
                                         value={form.title}
                                         onChange={e => setForm({...form, title: e.target.value})}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                                         required 
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">회차 및 캐스트 정보 (선택)</label>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">캐스트/회차 정보</label>
                                     <input 
                                         type="text" 
-                                        placeholder="예: 홍기범, 이봄소리"
+                                        placeholder="예: 캐스트A"
                                         value={form.cast}
                                         onChange={e => setForm({...form, cast: e.target.value})}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                                     />
                                 </div>
                                 <div className="flex items-center gap-2 pt-1">
@@ -132,108 +152,68 @@
                                         id="isDouble"
                                         checked={form.isDouble}
                                         onChange={e => setForm({...form, isDouble: e.target.checked})}
-                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300"
                                     />
-                                    <label htmlFor="isDouble" className="text-sm text-slate-700 cursor-pointer">더블 적립 이벤트 (도장 2개)</label>
+                                    <label htmlFor="isDouble" className="text-sm text-slate-700 cursor-pointer">더블 적립 회차 (도장 2개)</label>
                                 </div>
-                                <button 
-                                    type="submit"
-                                    className="w-full mt-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition shadow-sm"
-                                >
-                                    기록 추가하기
+                                <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition">
+                                    기록 추가 및 최적화 재계산
                                 </button>
                             </form>
                         </div>
 
-                        {/* [오른쪽] 도장판 및 기록 리스트 */}
+                        {/* 분석 및 최적화 루트 결과 대시보드 */}
                         <div className="md:col-span-2 space-y-6">
-                            {/* 도장판 대시보드 */}
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                                    <h2 className="text-lg font-semibold text-slate-700">🎟️ 자동 도장판 계산기</h2>
-                                    {shows.length > 0 && (
-                                        <select 
-                                            value={selectedShow} 
-                                            onChange={e => setSelectedShow(e.target.value)}
-                                            className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none"
-                                        >
-                                            {shows.map(show => (
-                                                <option key={show} value={show}>{show}</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </div>
-
-                                {shows.length === 0 ? (
-                                    <p className="text-sm text-slate-400 text-center py-6">등록된 관극 기록이 없습니다.</p>
+                                <h2 className="text-lg font-semibold mb-4 text-slate-700">⚡ 작품별 최적화 및 도장 루트 분석</h2>
+                                
+                                {optimizedRoutes.length === 0 ? (
+                                    <p className="text-sm text-slate-400 text-center py-6">입력된 기록이 없습니다.</p>
                                 ) : (
-                                    <div>
-                                        <div className="flex justify-between items-center mb-3 bg-indigo-50 px-4 py-3 rounded-xl">
-                                            <span className="text-sm font-medium text-indigo-900">현재 선택 작품: <strong className="text-indigo-600">{selectedShow}</strong></span>
-                                            <span className="text-sm font-bold text-indigo-700">총 적립 도장: {totalStamps}개</span>
-                                        </div>
+                                    <div className="space-y-4">
+                                        {optimizedRoutes.map((route, idx) => (
+                                            <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-base text-slate-800">{route.title}</span>
+                                                    <span className="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">
+                                                        적립 효율: {route.efficiency} (총 관람 {route.totalViews회}, 도장 {route.totalStamps}개)
+                                                    </span>
+                                                </div>
 
-                                        {/* 도장 그리드 시각화 */}
-                                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 mb-6">
-                                            {Array.from({ length: Math.max(10, Math.ceil(totalStamps / 5) * 5) }).map((_, idx) => {
-                                                const isStamped = idx < totalStamps;
-                                                return (
-                                                    <div 
-                                                        key={idx}
-                                                        className={`aspect-square rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                                                            isStamped 
-                                                                ? 'bg-indigo-600 text-white shadow-sm scale-105' 
-                                                                : 'bg-slate-100 text-slate-300 border border-dashed border-slate-200'
-                                                        }`}
-                                                    >
-                                                        {idx + 1}
+                                                {/* 진행도 바 */}
+                                                <div>
+                                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                                        <span>다음 목표 루트</span>
+                                                        <span className="font-medium text-slate-700">{route.nextMilestone}</span>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {/* 특전 달성 현황 */}
-                                        <div className="border-t border-slate-100 pt-4">
-                                            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">특전 달성 현황</h3>
-                                            <div className="space-y-2">
-                                                {rewards.map((reward, idx) => {
-                                                    const isAchieved = totalStamps >= reward.count;
-                                                    return (
-                                                        <div key={idx} className="flex justify-between items-center text-sm p-2 bg-slate-50 rounded-lg">
-                                                            <span className="font-medium text-slate-700">{reward.count}개 도장 - {reward.name}</span>
-                                                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isAchieved ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
-                                                                {isAchieved ? '달성 완료 🎉' : `남음 (${reward.count - totalStamps}개)`}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
+                                                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                                        <div className="bg-indigo-600 h-full transition-all duration-500" style={{ width: `${route.progressPercent}%` }}></div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
 
-                            {/* 관극 기록 리스트 */}
+                            {/* 전체 관극 기록 리스트 */}
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                                <h2 className="text-lg font-semibold mb-4 text-slate-700">📋 전체 관극 기록 이력</h2>
+                                <h2 className="text-lg font-semibold mb-4 text-slate-700">📋 입력된 전체 관극 기록</h2>
                                 {records.length === 0 ? (
-                                    <p className="text-sm text-slate-400 text-center py-4">기록을 추가해 보세요!</p>
+                                    <p className="text-sm text-slate-400 text-center py-4">기록이 없습니다.</p>
                                 ) : (
-                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                                         {records.map(record => (
-                                            <div key={record.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+                                            <div key={record.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-slate-800">{record.title}</span>
                                                         <span className="text-xs text-slate-400">{record.date}</span>
-                                                        {record.isDouble && <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블x2</span>}
+                                                        {record.isDouble && <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블적립</span>}
                                                     </div>
-                                                    {record.cast && <p className="text-xs text-slate-500 mt-0.5">{record.cast}</p>}
+                                                    {record.cast && <span className="text-xs text-slate-500">{record.cast}</span>}
                                                 </div>
-                                                <button 
-                                                    onClick={() => handleDelete(record.id)}
-                                                    className="text-slate-400 hover:text-rose-500 text-xs px-2 py-1 transition"
-                                                >
+                                                <button onClick={() => handleDelete(record.id)} className="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">
                                                     삭제
                                                 </button>
                                             </div>
