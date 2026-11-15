@@ -9,35 +9,38 @@
 <body class="bg-slate-50 text-slate-800 p-4 sm:p-6">
     <div class="max-w-4xl mx-auto space-y-6">
         <header class="text-center">
-            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 도장판 최적화 배분 & 탐색기</h1>
-            <p class="text-slate-500 mt-1 text-sm">판 개수와 목표 기준(4개/6개/8개)을 설정하면, 관극 기록을 바탕으로 가장 효율적인 도장 배분 순서를 탐색합니다.</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 도장판 최적 배분 & 최적화 탐색기</h1>
+            <p class="text-slate-500 mt-1 text-sm">기록을 먼저 쌓은 뒤, 원할 때 최적화를 실행하여 8칸 판에서 기준 개수(4개/6개) 단위로 끊어 넘어가는 시뮬레이션입니다.</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- [왼쪽] 설정 및 기록 입력 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 md:col-span-1 space-y-5">
                 <div>
-                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 최적화 설정</h2>
+                    <h2 class="text-md font-semibold mb-3 text-slate-700">⚙️ 도장판 최적화 설정</h2>
                     <div class="space-y-3 text-sm">
                         <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">목표 혜택 기준 도장 수</label>
-                            <select id="target-criteria" onchange="updateSettings()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                                <option value="4">4개 기준 (우선 달성)</option>
-                                <option value="6">6개 기준 (우선 달성)</option>
-                                <option value="8">8개 기준 (우선 달성)</option>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">판 완성 기준 도장 수 (목표 혜택)</label>
+                            <select id="target-criteria" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                <option value="4">4개 기준 도달 시 판 넘김 (8칸 판 중 4개만 채움)</option>
+                                <option value="6">6개 기준 도달 시 판 넘김 (8칸 판 중 6개만 채움)</option>
+                                <option value="8" selected>8개 기준 도달 시 판 넘김 (8칸 판 꽉 채움)</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-1">운영할 도장판 총 개수</label>
-                            <input type="number" id="board-count" value="2" min="1" max="10" onchange="updateSettings()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                            <input type="number" id="board-count" value="2" min="1" max="10" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg" />
                         </div>
+                        <button onclick="runOptimization()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition shadow-sm mt-2">
+                            ⚡ 최적화 탐색 실행하기
+                        </button>
                     </div>
                 </div>
 
                 <hr class="border-slate-100" />
 
                 <div>
-                    <h2 class="text-md font-semibold mb-3 text-slate-700">➕ 관극 기록 추가</h2>
+                    <h2 class="text-md font-semibold mb-3 text-slate-700">➕ 관극 기록 먼저 추가하기</h2>
                     <form onsubmit="addRecord(event)" class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-1">관람일자</label>
@@ -51,34 +54,38 @@
                             <input type="checkbox" id="input-double" class="w-4 h-4 text-indigo-600 rounded border-slate-300" />
                             <label for="input-double" class="text-xs text-slate-700 cursor-pointer">더블 적립 회차 (도장 2개)</label>
                         </div>
-                        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition">
-                            기록 추가 및 최적 경로 탐색
+                        <button type="submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg text-sm transition">
+                            기록 누적 저장
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- [오른쪽] 최적화 탐색 결과 및 판별 배분 시각화 -->
+            <!-- [오른쪽] 탐색 결과 및 도장판 시각화 -->
             <div class="md:col-span-2 space-y-6">
-                <!-- 최적화 결과 가이드 -->
+                <!-- 결과 가이드 -->
                 <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl space-y-2">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider">💡 최적 배분 탐색 결과</h3>
-                        <select id="show-select" onchange="changeShow(this.value)" class="p-1 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-indigo-800">
+                        <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider">💡 최적화 탐색 결과</h3>
+                        <select id="show-select" onchange="render()" class="p-1 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-indigo-800">
                         </select>
                     </div>
-                    <p id="advice-text" class="text-sm text-indigo-950 font-medium leading-relaxed pt-1"></p>
+                    <p id="advice-text" class="text-sm text-indigo-950 font-medium leading-relaxed pt-1">
+                        왼쪽에서 기록을 추가한 뒤 **[최적화 탐색 실행하기]** 버튼을 눌러주세요.
+                    </p>
                 </div>
 
-                <!-- 설정된 판 개수만큼 도장판 시각화 -->
+                <!-- 8칸 고정 도장판 시각화 영역 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                    <h3 class="text-md font-semibold text-slate-700">🎟️ 도장판별 최적 배분 현황</h3>
-                    <div id="boards-container" class="space-y-4"></div>
+                    <h3 class="text-md font-semibold text-slate-700">🎟️ 8칸 도장판별 최적 배분 현황</h3>
+                    <div id="boards-container" class="space-y-4">
+                        <p class="text-sm text-slate-400 text-center py-4">최적화 실행 전입니다.</p>
+                    </div>
                 </div>
 
                 <!-- 관극 기록 리스트 -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-md font-semibold mb-4 text-slate-700">📜 전체 관극 회차 타임라인</h3>
+                    <h3 class="text-md font-semibold mb-4 text-slate-700">📜 누적된 전체 관극 기록</h3>
                     <div id="timeline-list" class="space-y-2 max-h-52 overflow-y-auto pr-1"></div>
                 </div>
             </div>
@@ -86,24 +93,17 @@
     </div>
 
     <script>
-        let records = JSON.parse(localStorage.getItem('optimized_boards_records')) || [
+        let records = JSON.parse(localStorage.getItem('manual_opt_records')) || [
             { id: 1, date: '2026-03-01', title: '이끼숲', isDouble: false },
             { id: 2, date: '2026-03-10', title: '이끼숲', isDouble: true },
             { id: 3, date: '2026-03-15', title: '이끼숲', isDouble: false },
-            { id: 4, date: '2026-03-20', title: '이끼숲', isDouble: false }
+            { id: 4, date: '2026-03-20', title: '이끼숲', isDouble: false },
+            { id: 5, date: '2026-04-01', title: '이끼숲', isDouble: false }
         ];
 
-        let targetCriteria = 4; // 기준 도장 수 (4, 6, 8)
-        let totalBoards = 2;    // 총 운영할 판 개수
-        let activeShow = '이끼숲';
+        let optimizedResult = null; // 최적화 실행 결과 저장용
 
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-
-        function updateSettings() {
-            targetCriteria = parseInt(document.getElementById('target-criteria').value);
-            totalBoards = parseInt(document.getElementById('board-count').value);
-            render();
-        }
 
         function addRecord(e) {
             e.preventDefault();
@@ -115,61 +115,43 @@
 
             const newRecord = { id: Date.now(), date, title, isDouble };
             records.unshift(newRecord);
-            activeShow = title;
+            localStorage.setItem('manual_opt_records', JSON.stringify(records));
             render();
         }
 
         function deleteRecord(id) {
             records = records.filter(r => r.id !== id);
+            localStorage.setItem('manual_opt_records', JSON.stringify(records));
+            optimizedResult = null; // 기록이 바뀌면 최적화 결과 초기화
             render();
         }
 
-        function changeShow(val) {
-            activeShow = val;
-            render();
-        }
-
-        function render() {
-            localStorage.setItem('optimized_boards_records', JSON.stringify(records));
-
-            const shows = [...new Set(records.map(r => r.title))];
-            const selectEl = document.getElementById('show-select');
-            
-            if (shows.length === 0) {
-                selectEl.innerHTML = '<option>기록 없음</option>';
-            } else {
-                if (!shows.includes(activeShow)) activeShow = shows[0];
-                selectEl.innerHTML = shows.map(s => `<option value="${s}" ${s === activeShow ? 'selected' : ''}>${s}</option>`).join('');
-            }
+        function runOptimization() {
+            const targetCriteria = parseInt(document.getElementById('target-criteria').value);
+            const totalBoards = parseInt(document.getElementById('board-count').value);
+            const activeShow = document.getElementById('show-select').value;
 
             const showRecords = records
                 .filter(r => r.title === activeShow)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            // 최적화 배분 알고리즘:
-            // 설정된 판 개수(totalBoards)와 기준 도장 수(targetCriteria)에 맞춰 
-            // 관극 기록에서 얻은 도장들을 순서대로 판에 최적 배분합니다.
             let boards = {};
             for (let i = 1; i <= totalBoards; i++) {
-                boards[i] = { boardNum: i, stamps: [], completed: false };
+                boards[i] = { boardNum: i, stampsCount: 0, completed: false };
             }
 
             let currentBoardIdx = 1;
             let totalStampsEarned = 0;
-            let timelineMapping = [];
 
-            showRecords.forEach((record, index) => {
+            showRecords.forEach((record) => {
                 const earned = record.isDouble ? 2 : 1;
-                let recordAllocations = [];
-
                 for (let i = 0; i < earned; i++) {
                     totalStampsEarned += 1;
                     if (currentBoardIdx <= totalBoards) {
-                        if (boards[currentBoardIdx].stamps.length < targetCriteria) {
-                            boards[currentBoardIdx].stamps.push({ recordId: record.id, date: record.date });
-                        }
-                        // 만약 현재 판이 기준 개수(targetCriteria)를 채웠다면 다음 판으로 배분 준비
-                        if (boards[currentBoardIdx].stamps.length === targetCriteria) {
+                        boards[currentBoardIdx].stampsCount += 1;
+                        
+                        // 사용자가 지정한 기준 개수(예: 4개)에 도달하면 해당 판 완성 후 다음 판으로 점프
+                        if (boards[currentBoardIdx].stampsCount === targetCriteria) {
                             boards[currentBoardIdx].completed = true;
                             if (currentBoardIdx < totalBoards) {
                                 currentBoardIdx += 1;
@@ -177,31 +159,93 @@
                         }
                     }
                 }
-
-                timelineMapping.push({
-                    id: record.id,
-                    index: index + 1,
-                    date: record.date,
-                    isDouble: record.isDouble,
-                    earned: earned
-                });
             });
 
-            // 조언 텍스트 생성
-            let completedBoardsCount = Object.values(boards).filter(b => b.completed).length;
-            let advice = `🎯 설정된 [${targetCriteria}개 기준]으로 총 ${totalBoards}개의 판 중 현재 **${completedBoardsCount}개 판이 완성**되었습니다. (총 누적 도장: ${totalStampsEarned}개)`;
-            document.getElementById('advice-text').innerHTML = advice;
+            optimizedResult = { targetCriteria, totalBoards, boards, totalStampsEarned };
+            renderResults();
+        }
 
-            // 판별 시각화 렌더링
+        function render() {
+            const shows = [...new Set(records.map(r => r.title))];
+            const selectEl = document.getElementById('show-select');
+            let activeShow = selectEl.value;
+
+            if (shows.length === 0) {
+                selectEl.innerHTML = '<option>기록 없음</option>';
+            } else {
+                if (!shows.includes(activeShow)) activeShow = shows[0];
+                selectEl.innerHTML = shows.map(s => `<option value="${s}" ${s === activeShow ? 'selected' : ''}>${s}</option>`).join('');
+            }
+
+            // 관극 기록 리스트 렌더링
+            const showRecords = records.filter(r => r.title === activeShow);
+            let timelineHtml = '';
+            if (showRecords.length === 0) {
+                timelineHtml = '<p class="text-sm text-slate-400 text-center py-4">누적된 관극 기록이 없습니다.</p>';
+            } else {
+                showRecords.forEach((item, index) => {
+                    timelineHtml += `
+                        <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
+                            <div class="flex items-center gap-3">
+                                <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">${index + 1}</span>
+                                <div>
+                                    <span class="font-bold text-slate-800">${item.date} 관람</span>
+                                    ${item.isDouble ? '<span class="ml-2 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블적립(+2)</span>' : ''}
+                                </div>
+                            </div>
+                            <button onclick="deleteRecord(${item.id})" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('timeline-list').innerHTML = timelineHtml;
+
+            // 이미 최적화가 실행된 상태였다면 결과 화면 갱신
+            if (optimizedResult) {
+                renderResults();
+            }
+        }
+
+        function renderResults() {
+            if (!optimizedResult) return;
+            const { targetCriteria, totalBoards, boards, totalStampsEarned } = optimizedResult;
+            let completedCount = Object.values(boards).filter(b => b.completed).length;
+
+            document.getElementById('advice-text').innerHTML = `
+                ✨ 최적화 탐색 완료! 설정하신 [${targetCriteria}개 기준 도달 시 판 넘김] 규칙에 따라 총 ${totalBoards}개의 8칸 판 중 **${completedCount}개 판이 완성**되었습니다. (총 누적 도장: ${totalStampsEarned}개)
+            `;
+
             let boardsHtml = '';
             for (let i = 1; i <= totalBoards; i++) {
                 const b = boards[i];
                 let gridHtml = '';
-                for (let slot = 1; slot <= targetCriteria; slot++) {
-                    const isFilled = slot <= b.stamps.length;
+                
+                // 도장판은 무조건 물리적으로 8칸 표시
+                for (let slot = 1; slot <= 8; slot++) {
+                    const isFilled = slot <= b.stampsCount;
+                    const isBeyondCriteria = slot > targetCriteria; // 기준 개수를 초과하는 칸 (예: 4개 기준일 때 5~8번 칸)
+
+                    let slotBg = '';
+                    let textColor = '';
+                    let label = '';
+
+                    if (isFilled) {
+                        slotBg = 'bg-indigo-600 text-white shadow-sm';
+                        label = `${slot}`;
+                    } else if (isBeyondCriteria) {
+                        // 기준을 채우고 넘어갔기 때문에 비워두는 칸
+                        slotBg = 'bg-slate-200 text-slate-400 opacity-50';
+                        label = `${slot}`;
+                    } else {
+                        // 채워야 하지만 아직 도장이 모자란 칸
+                        slotBg = 'bg-slate-50 text-slate-300 border border-dashed border-slate-200';
+                        label = `${slot}`;
+                    }
+
                     gridHtml += `
-                        <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all relative ${isFilled ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-300 border border-dashed border-slate-200'}">
-                            <span>${slot}</span>
+                        <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all relative ${slotBg}">
+                            <span>${label}</span>
+                            ${slot === targetCriteria ? '<span class="text-[8px] bg-indigo-500 text-white px-1 rounded mt-0.5">기준점</span>' : ''}
                         </div>
                     `;
                 }
@@ -209,9 +253,9 @@
                 boardsHtml += `
                     <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                         <div class="flex justify-between items-center text-sm">
-                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (${targetCriteria}개 만원)</span>
+                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (8칸 만원 / 목표 기준: ${targetCriteria}개)</span>
                             <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${b.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                                ${b.completed ? '목표 달성 완료 ✨' : `진행 중 (${b.stamps.length}/${targetCriteria})`}
+                                ${b.completed ? '기준 달성 완료 ✨' : `진행 중 (${b.stampsCount}/${targetCriteria} 채워짐)`}
                             </span>
                         </div>
                         <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
@@ -221,31 +265,6 @@
                 `;
             }
             document.getElementById('boards-container').innerHTML = boardsHtml;
-
-            // 타임라인 렌더링
-            let timelineHtml = '';
-            if (timelineMapping.length === 0) {
-                timelineHtml = '<p class="text-sm text-slate-400 text-center py-4">관극 기록이 없습니다.</p>';
-            } else {
-                [...timelineMapping].reverse().forEach(item => {
-                    timelineHtml += `
-                        <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-sm border border-slate-100">
-                            <div class="flex items-center gap-3">
-                                <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">${item.index}</span>
-                                <div>
-                                    <span class="font-bold text-slate-800">${item.date} 관람</span>
-                                    ${item.isDouble ? '<span class="ml-2 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded font-semibold">더블적립(+2)</span>' : ''}
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs font-medium text-slate-500">도장 +${item.earned}개 획득</span>
-                                <button onclick="deleteRecord(${item.id})" class="text-slate-400 hover:text-rose-500 text-xs px-2 py-1">삭제</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            document.getElementById('timeline-list').innerHTML = timelineHtml;
         }
 
         render();
