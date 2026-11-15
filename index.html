@@ -10,7 +10,7 @@
     <div class="max-w-4xl mx-auto space-y-6">
         <header class="text-center">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">🧭 관극 도장판 최적 배분 & 최적화 탐색기</h1>
-            <p class="text-slate-500 mt-1 text-sm">도장판 칸 수와 혜택 기준, 적립 배수를 설정하여 순환 시뮬레이션을 실행하세요.</p>
+            <p class="text-slate-500 mt-1 text-sm">기준 개수를 채워 혜택을 달성하되, 도장이 남으면 판을 끝까지 꽉 채우며 순환하는 시뮬레이션입니다.</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -30,14 +30,14 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">판 넘김 기준 혜택 도장 수 (3 ~ 8개)</label>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">혜택 달성 기준 도장 수 (3 ~ 8개)</label>
                             <select id="target-criteria" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                                <option value="3">3개 채우면 다음 판으로 넘김</option>
-                                <option value="4" selected>4개 채우면 다음 판으로 넘김</option>
-                                <option value="5">5개 채우면 다음 판으로 넘김</option>
-                                <option value="6">6개 채우면 다음 판으로 넘김</option>
-                                <option value="7">7개 채우면 다음 판으로 넘김</option>
-                                <option value="8">8개 채우면 다음 판으로 넘김</option>
+                                <option value="3">3개 채우면 혜택 달성</option>
+                                <option value="4">4개 채우면 혜택 달성</option>
+                                <option value="5" selected>5개 채우면 혜택 달성</option>
+                                <option value="6">6개 채우면 혜택 달성</option>
+                                <option value="7">7개 채우면 혜택 달성</option>
+                                <option value="8">8개 채우면 혜택 달성</option>
                             </select>
                         </div>
                         <div>
@@ -102,8 +102,7 @@
     </div>
 
     <script>
-        // 초기 기록을 빈 배열([])로 설정하여 처음 접속 시 아무것도 안 뜨게 비워둠
-        let records = JSON.parse(localStorage.getItem('clean_opt_records')) || [];
+        let records = JSON.parse(localStorage.getItem('clean_opt_records_v6')) || [];
         let optimizedResult = null;
 
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
@@ -115,13 +114,13 @@
 
             const newRecord = { id: Date.now(), date, earnType };
             records.unshift(newRecord);
-            localStorage.setItem('clean_opt_records', JSON.stringify(records));
+            localStorage.setItem('clean_opt_records_v6', JSON.stringify(records));
             render();
         }
 
         function deleteRecord(id) {
             records = records.filter(r => r.id !== id);
-            localStorage.setItem('clean_opt_records', JSON.stringify(records));
+            localStorage.setItem('clean_opt_records_v6', JSON.stringify(records));
             optimizedResult = null;
             render();
         }
@@ -138,26 +137,30 @@
 
             let boards = {};
             for (let i = 1; i <= totalBoards; i++) {
-                boards[i] = { boardNum: i, stampsCount: 0, completed: false };
+                boards[i] = { boardNum: i, stampsCount: 0, criteriaReached: false };
             }
 
             let currentBoardIdx = 1;
             let stampsAllocated = 0;
 
+            // 새로운 배분 알고리즘:
+            // 도장을 채워나가면서 설정된 기준(targetCriteria)에 도달하면 '혜택 달성(criteriaReached = true)' 자격을 얻습니다.
+            // 하지만 도장이 더 남아있다면, 판을 곧바로 끊지 않고 해당 판의 최대 칸 수(boardCapacity)까지 최대한 꽉 채운 뒤 다음 판으로 넘어갑니다.
             while (stampsAllocated < totalStampsEarned && currentBoardIdx <= totalBoards) {
                 boards[currentBoardIdx].stampsCount += 1;
                 stampsAllocated += 1;
 
-                if (boards[currentBoardIdx].stampsCount === targetCriteria) {
-                    boards[currentBoardIdx].completed = true;
+                // 기준 개수에 도달했는지 체크
+                if (boards[currentBoardIdx].stampsCount >= targetCriteria) {
+                    boards[currentBoardIdx].criteriaReached = true;
+                }
+
+                // 현재 판이 판의 최대 칸 수(boardCapacity)에 도달했고, 아직 남은 도장이 있다면 다음 판으로 이동
+                if (boards[currentBoardIdx].stampsCount === boardCapacity && stampsAllocated < totalStampsEarned) {
                     if (currentBoardIdx < totalBoards) {
                         currentBoardIdx += 1;
                     }
                 }
-            }
-
-            if (boards[currentBoardIdx] && boards[currentBoardIdx].stampsCount >= targetCriteria) {
-                boards[currentBoardIdx].completed = true;
             }
 
             optimizedResult = { boardCapacity, targetCriteria, totalBoards, boards, totalStampsEarned };
@@ -198,10 +201,10 @@
         function renderResults() {
             if (!optimizedResult) return;
             const { boardCapacity, targetCriteria, totalBoards, boards, totalStampsEarned } = optimizedResult;
-            let completedCount = Object.values(boards).filter(b => b.completed).length;
+            let completedCount = Object.values(boards).filter(b => b.criteriaReached).length;
 
             document.getElementById('advice-text').innerHTML = `
-                ✨ 최적화 탐색 완료! 총 누적 도장 **${totalStampsEarned}개**를 [${boardCapacity}칸 판 / ${targetCriteria}개 기준]으로 배분하여 **${completedCount}개의 판이 완성**되었습니다.
+                ✨ 최적화 탐색 완료! 총 누적 도장 **${totalStampsEarned}개**를 [${boardCapacity}칸 판 / ${targetCriteria}개 기준]으로 배분하여 **${completedCount}개의 판이 혜택을 달성**했습니다.
             `;
 
             let boardsHtml = '';
@@ -209,24 +212,20 @@
                 const b = boards[i];
                 let gridHtml = '';
                 
+                // 설정한 boardCapacity(총 칸 수)만큼 칸을 그리며 도장 채우기
                 for (let slot = 1; slot <= boardCapacity; slot++) {
                     const isFilled = slot <= b.stampsCount;
-                    const isBeyondCriteria = slot > targetCriteria;
-
                     let slotBg = '';
-                    let label = `${slot}`;
 
                     if (isFilled) {
                         slotBg = 'bg-indigo-600 text-white shadow-sm';
-                    } else if (isBeyondCriteria) {
-                        slotBg = 'bg-slate-200 text-slate-300 opacity-40';
                     } else {
                         slotBg = 'bg-slate-50 text-slate-300 border border-dashed border-slate-200';
                     }
 
                     gridHtml += `
                         <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all relative ${slotBg}">
-                            <span>${label}</span>
+                            <span>${slot}</span>
                             ${slot === targetCriteria ? '<span class="text-[8px] bg-indigo-500 text-white px-1 rounded mt-0.5">기준점</span>' : ''}
                         </div>
                     `;
@@ -235,9 +234,9 @@
                 boardsHtml += `
                     <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                         <div class="flex justify-between items-center text-sm">
-                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (${boardCapacity}칸 판 / 목표 기준: ${targetCriteria}개 도달 시 마감)</span>
-                            <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${b.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                                ${b.completed ? '기준 달성 완료 ✨' : `진행 중 (${b.stampsCount}/${targetCriteria})`}
+                            <span class="font-bold text-slate-800">제 ${b.boardNum}판 (${boardCapacity}칸 판 / 기준: ${targetCriteria}개)</span>
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${b.criteriaReached ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${b.criteriaReached ? '혜택 달성 완료 ✨' : `진행 중 (${b.stampsCount}/${boardCapacity})`}
                             </span>
                         </div>
                         <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
